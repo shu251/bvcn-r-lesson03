@@ -1,5 +1,6 @@
 # Import data
-gene_data <- read.table("test-data-skoog.txt")
+gene_data <- read.delim("test-data-skoog.txt")
+# ?read.delim()
 head(gene_data)
 # Data are representative of taxa as rows and columns showing genes (values equal copies of those genes for each taxa). These 4 genes are required for the full pathway. We will show some examples of how to subset, filter, and perform basic calculations.
  
@@ -8,38 +9,51 @@ head(gene_data)
 ## Data frames can include different types of data
 class(gene_data)
 head(gene_data)
-str(gene_data) # Factors and numerics included in this data
+str(gene_data) # Factors and integers included in this data
 
 
 # So matrices...
-# When do you use one over the other? It depends on what kind of data you're working with. If you're working with different types of information in the same table, you likely need a data frame. But if you're working with a single data type, a matrix may be better for you. Additionally, matrices are more efficient with respect to memory. Therefore, a lot of statistical tools/methods require a matrix as input. We will review this.
-#
+# When do you use one over the other? It depends on what kind of data you're working with. If you're working with different types of information in the same table, you likely need a data frame. But if you're working with a single data type, a matrix may be better for you. Additionally, matrices are more efficient with respect to memory. Therefore, a lot of statistical tools/methods require a matrix as input. We will review this. #Compare str() results
+gene_mat <- as.matrix(gene_data)
+# str(gene_mat)
+# str(gene_data)
+# View(gene_mat)
+
+# Let's work with the data frame version of our test data
 # Colnames and rownames:
 colnames(gene_data) # reports all of my column names! 
 
 # Let's change some of these because there is a typo
-colnames(gene_data)[5] <- "GENE_D" #Changes the 5th column name to "GENE_D"
+colnames(gene_data)[6] <- "GENE_D" #Changes the 5th column name to "GENE_D"
+colnames(gene_data)[4:6] <- c("GENE_C", "GENE_B", "GENE_D") #change column headers for rows 4 through 6
 colnames(gene_data)
+
+# Example of how to change the order (2 ways) - Which way would be more reproducible?
+colnames(gene_data)
+gene_data_reorder <- gene_data[, c("Taxon", "MAG","GENE_A", "GENE_B", "GENE_C", "GENE_D")]
+
+tmp <- gene_data[c(1:3,5,4,6)] #Combine specific columns "c()"
+
 
 # How about rows - these are just random numbers! R assigns increasing numbers automatically as row names, unless you specify. 
 row.names(gene_data) # So when would you need to specify row.names???
-# Recall the data I'm looking at are integers and a factor column, so a data frame. BUT if I need it to be in a matrix, I can modify this.
+# Recall the data I'm looking at are integers and factors. One row states the full taxon name and another row tells me the MAG ID number.
 class(gene_data)
 str(gene_data)
 
-# Let's work on modifying data frames
+# In what scenario is it good to add in row.names? It is the same as adding column headers, but this is with respect to rows. Keeping with that logic, row names need to be unique.
+tmp <- gene_data
+row.names(tmp) <- tmp$Taxon
+row.names(tmp) <- tmp$MAG
+# head(tmp)
+# View(tmp)
+# row.names(tmp) <- paste(tmp$Taxon, tmp$MAG, sep=" ")
+
+
+# Let's work on modifying the data frame and do some math!
 library(reshape2)
 library(tidyverse)
-
-# Re-import
-gene_data <- read.csv("test-data-skoog.csv")
-colnames(gene_data)[5] <- "GENE_D" # we did this above as well
-
-# Example of how to change the order
-colnames(gene_data)
-gene_data_reorder <- gene_data[, c("Taxon", "GENE_A", "GENE_B", "GENE_C", "GENE_D")]
-
-tmp <- gene_data[c(1,2,4,3,5)] #Combine specific columns "c()"
+# head(gene_data[1:2,])
 
 # Use wide-format data and subset to find taxa with all genes required in pathway
 # Subset taxa so they have both Gene C and D, but have either Gene A or B. This demonstrates that the taxa are capable of the pathway.
@@ -53,6 +67,7 @@ tmp2 <- subset(gene_data, !(GENE_A == 0 ))
 
 
 
+
 # This data is in wide format. Convert to long format - this is more versatile.
 ## Compare long vs. wide format
 gene_data_long <- melt(gene_data_reorder)
@@ -62,37 +77,52 @@ head(gene_data_long)
 
 
 # Split Taxon column
-gene_data_long <- separate(gene_data_long, Taxon, c("phylum", "class", "order", "family", "genus", "species"), sep = ";", remove=FALSE)
+gene_data_long <- separate(gene_data_long, Taxon, c("phylum", "class", "order", "family", "genus", "species"), sep = ";", remove = FALSE)
 head(gene_data_long)
 
 
-# Mean for Class
+#
+# Review summarise(), mutate(), & dplyr syntax
+#
+# Mean at Class level - across whole dataset (add Min and Max value to demonstrate syntax)
 mean_class <- gene_data_long %>%
   group_by(class, variable) %>%
   summarise(MEAN = mean(value)) %>%
   data.frame
 head(mean_class)
 
-# # Relative abundance of genes by Taxon
-# head(gene_data_long)
-# colnames(gene_data_long)
-# #
-# relabun_all <- gene_data_long %>%
-#   group_by(order, variable) %>%
-#   summarise(RELABUN = value/sum(value)) %>%
-#   data.frame
-# head(relabun_all)
 
-# Add column to categorize data
+# Relative abundance of genes by Taxon
+relabun_all <- gene_data_long %>%
+  group_by(class, variable) %>%
+  mutate(RELABUN = (value/sum(value))) %>%
+  data.frame
+head(relabun_all)
+
+## Check relative abundance calculation
+# alpha_test <- subset(relabun_all, class %in% "c__Alphaproteobacteria")
+# View(alpha_test)
+# sum(alpha_test$RELABUN)
+
+
+# Average across replicates
 ## Let's simulate replicates that we need to average across
 head(gene_data_long)
-#
 # Add in a simulated column that represents replicates
 gene_data_long$REPLICATE <- sample(c("rep-1", "rep-2"), replace = TRUE)
 head(gene_data_long)
-#
-# Average across replicates
 
+gene_avg <- gene_data_long %>%
+  group_by(Taxon, MAG, variable) %>%
+  summarise(AVG_REPS = mean(value)) %>%
+  data.frame
+head(gene_avg)  
+# dim(gene_avg); dim(gene_data_long)
+
+
+# Export Table for use
+head(mean_class)
+?write.table()
 
 
 
