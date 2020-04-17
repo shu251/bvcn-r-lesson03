@@ -1,5 +1,5 @@
 # Import data
-gene_data <- read.csv("test-data-skoog.csv")
+gene_data <- read.table("test-data-skoog.txt")
 head(gene_data)
 # Data are representative of taxa as rows and columns showing genes (values equal copies of those genes for each taxa). These 4 genes are required for the full pathway. We will show some examples of how to subset, filter, and perform basic calculations.
  
@@ -8,7 +8,7 @@ head(gene_data)
 ## Data frames can include different types of data
 class(gene_data)
 head(gene_data)
-str(gene_data) # Factors and integers included in this data
+str(gene_data) # Factors and numerics included in this data
 
 
 # So matrices...
