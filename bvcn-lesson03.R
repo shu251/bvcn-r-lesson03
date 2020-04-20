@@ -1,10 +1,48 @@
-# Import data
+### Loading in libraries
+# remember, if you don't have these, you can install libraries with `install.packages("tidyverse")` for instance.
+library(tidyverse)
+
+### Importing data
+
+## Normal way
 gene_data <- read.delim("test-data-skoog.txt")
 # ?read.delim()
 head(gene_data)
 # Data are representative of taxa as rows and columns showing genes (values equal copies of those genes for each taxa). These 4 genes are required for the full pathway. We will show some examples of how to subset, filter, and perform basic calculations.
 
+
+# Data frame versus matrix in R
+## Data frames can include different types of data
+class(gene_data)
+head(gene_data)
+str(gene_data) # Factors and integers included in this data
+
+## Tidyverse way
+# Tidyverse are a series of related packages with related syntax. This includes functions for reading data.
+# this funciton requires you to tell R what your "delimiter" is. Thats the charact
+gene_data_tidy <- read_delim("test-data-skoog.txt", delim = "\t")
+# Lets see the differences between this and the other fomat
+
+class(gene_data_tidy)
+head(gene_data_tidy)
+str(gene_data_tidy)
+
+## Some key differences. 
+# The object is a "tibble" in addition to being a data frame.
+# Text columns are character vectors, instead of factors (easier to deal with)
+# Tibbles usually lack  -- rownames are often a pain to deal with. This one has rownames though, for whatever reason.
+
+### So matrices...
+# When do you use one over the other? It depends on what kind of data you're working with. If you're working with different types of information in the same table, you likely need a data frame. But if you're working with a single data type, a matrix may be better for you. Additionally, matrices are more efficient with respect to memory. Therefore, a lot of statistical tools/methods require a matrix as input. We will review this. #Compare str() results
+gene_mat <- as.matrix(gene_data)
+# str(gene_mat)
+# str(gene_data)
+# View(gene_mat)
+
+### Let's work with the data frame version of our test data
+
 # Colnames and rownames, "index" what appears in the columns and rows. It is like the bar A-Z at the top and the numbers on the left side bar of an Excel table.
+
 colnames(gene_data) # reports all of my column names! 
 
 # Let's change some of these because there is a typo
@@ -21,6 +59,20 @@ gene_data_reorder <- gene_data[, c("Taxon", "MAG","GENE_A", "GENE_B", "GENE_C", 
 
 # Option 2
 tmp <- gene_data[c(1:3,5,4,6)] #Combine specific columns "c()"
+
+## Tidyverse version of renaming and reordering columns.
+# `%>%` is called a "pipe"
+
+# Fix column name
+gene_data_tidy_fix <- gene_data_tidy %>% rename(GENE_D = Gene_d)
+
+# Fix order
+gene_data_tidy_reorder <- gene_data_tidy_fix %>% select(Taxon, MAG, GENE_A, GENE_B, GENE_C, GENE_D)
+
+# another way of re ordiring, does same as above
+# Everything says use everything that is left. Often nice when you are just trying to bring one variable to the left of a data.frame or tibble
+gene_data_tidy_reorder <- gene_data_tidy_fix %>% select(Taxon, MAG, GENE_A, GENE_B, everything())
+
 
 
 
@@ -84,10 +136,20 @@ gene_data %>%
   filter(MAG %in% mags_i_want) %>%
   select(Taxon, MAG)
 
-
-
 # Repeat in base R
 subset(gene_data, MAG %in% mags_i_want)[,c("Taxon", "MAG")]
+
+
+## Tidyverse subsetting
+tmp_tidy <- gene_data %>% filter(GENE_C > 0 & GENE_D > 0)
+# another way of doing the above
+tmp_tidy <- gene_data %>% filter(GENE_C > 0, GENE_D > 0)
+# a third way of doing the above
+tmp_tidy <- gene_data %>% filter(GENE_C > 0) %>% filter(GENE_D > 0)
+## as in tmp2 but tidy
+tmp2_tidy <- gene_data %>% filter(GENE_A != 0)
+# more like other way, does same thing
+tmp2_tidy <- gene_data %>% filter(!(GENE_A == 0))
 
 
 # This data is in wide format. Convert to long format - this is more versatile in R.
@@ -102,11 +164,16 @@ gene_data_long <- gene_data %>%
 # View(gene_data)
 # View(gene_data_long)
 
+## Tidy way of doing the above
+gene_data_tidy_long <- gene_data_tidy_reorder %>% pivot_longer(cols = GENE_A:GENE_D, names_to = "Gene", values_to = "Instances")
+head(gene_data_tidy_long)
 
 # Split Taxon column
 gene_data_long_cols <- gene_data_long %>%
   separate(Taxon, c("phylum", "class", "order", "family", "genus", "species"), sep = ";", remove = FALSE)
 head(gene_data_long_cols)
+
+# The above is actually a tidyverse function.
 
 
 #Lets combine the two operations from above.
